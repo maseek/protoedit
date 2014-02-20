@@ -5,7 +5,7 @@ open System.Windows
 open System.Windows.Controls
 open FSharpx
 
-type MainWindow = XAML<"MainWindow.xaml">
+type MainWindow = XAML<"src/MainWindow.xaml">
 
 let loadWindow() =
    let window = MainWindow()
