@@ -1,6 +1,45 @@
 ﻿<Window
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="" Height="450" Width="500">
-
+        Title="" Height="600" Width="800">
+    <Window.Resources>
+        <Style x:Key="placeHolder" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Grid>
+                            <TextBox Text="{TemplateBinding Text}" x:Name="textSource" Background="Transparent" Panel.ZIndex="2" />
+                            <TextBox Text="{TemplateBinding Tag}" Background="{TemplateBinding Background}" Panel.ZIndex="1">
+                                <TextBox.Style>
+                                    <Style TargetType="{x:Type TextBox}">
+                                        <Setter Property="Foreground" Value="Transparent"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=Text, Source={x:Reference textSource}}" Value="">
+                                                <Setter Property="Foreground" Value="LightGray"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30" />
+            <RowDefinition Height="30" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Text="proto definition" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="0" Padding="5" />
+        <TextBlock Text="serialized data" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" Padding="5" />
+        <TextBox Name="protoInput" Style="{StaticResource placeHolder}" Tag="drag&amp;drop" Grid.Row="0" Grid.Column="1" Margin="5"/>
+        <TextBox Name="dataInput" Style="{StaticResource placeHolder}" Tag="drag&amp;drop" Grid.Row="1" Grid.Column="1" Margin="5" />
+    </Grid>
 </Window>
