@@ -5,8 +5,12 @@ open System.Windows
 open System.Windows.Controls
 open System.Windows.Media
 open FSharpx
+open ParseIn
 
 type MainWindow = XAML<"src/MainWindow.xaml">
+
+let readBinaryFile (filePath:string) = System.IO.File.ReadAllBytes(filePath)
+let readFileLines (filePath:string) = System.IO.File.ReadLines(filePath)
 
 type App(window : MainWindow) = 
     let _window = window
@@ -14,6 +18,7 @@ type App(window : MainWindow) =
     let _protoBrowse : Button = _window.Root.FindName "protoBrowse" |> unbox
     let _dataInput : TextBox = _window.Root.FindName "dataInput" |> unbox
     let _dataBrowse : Button = _window.Root.FindName "dataBrowse" |> unbox
+    let _dataNew : Button = _window.Root.FindName "dataNew" |> unbox
 
     member this.window
         with get () = _window
@@ -32,7 +37,11 @@ type App(window : MainWindow) =
         openFileDialog.Filter <- "Proto files (*.proto)|*.proto|All Files (*.*)|*.*"
         let result = openFileDialog.ShowDialog ()
         if result.Equals(Forms.DialogResult.OK) 
-            then _protoInput.Text <- openFileDialog.FileName
+            then
+                let filePath = openFileDialog.FileName
+                let fileLines = readFileLines filePath
+                let protoDescriptor = parseProtoFile fileLines
+                _protoInput.Text <- filePath
 
     member this.dataBrowseHandler (e : RoutedEventArgs) =
         let openFileDialog = new Forms.OpenFileDialog()
@@ -41,21 +50,30 @@ type App(window : MainWindow) =
         if result.Equals(Forms.DialogResult.OK) 
             then _dataInput.Text <- openFileDialog.FileName
 
-    member this.InitializeComponent () =
+    member this.dataNewHandler (e : RoutedEventArgs) =
+        let saveFileDialog = new Forms.SaveFileDialog()
+        saveFileDialog.Filter <- "Binary file (*.bin)|*.bin"
+        saveFileDialog.FileName <- "data"
+        saveFileDialog.DefaultExt <- ".bin"
+        let result = saveFileDialog.ShowDialog ()
+        if result.Equals(Forms.DialogResult.OK)
+            then _dataInput.Text <- saveFileDialog.FileName
+
+    member this.Init () =
         _protoInput.PreviewDragOver.Add(this.previewDragHandler)
         _protoInput.PreviewDrop.Add(this.previewDropHandler)
         _protoBrowse.Click.Add(this.protoBrowseHandler)
         _dataInput.PreviewDragOver.Add(this.previewDragHandler)
         _dataInput.PreviewDrop.Add(this.previewDropHandler) 
         _dataBrowse.Click.Add(this.dataBrowseHandler)
+        _dataNew.Click.Add(this.dataNewHandler)
 
     new() = App(new MainWindow())
 
 let loadWindow() =
     let app = App()
-    app.InitializeComponent()
+    app.Init()
     app.window.Root
-
 
 [<STAThread>]
 (new Application()).Run(loadWindow()) |> ignore

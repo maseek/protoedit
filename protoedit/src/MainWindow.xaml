@@ -33,6 +33,7 @@
             <ColumnDefinition Width="100" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="80" />
+            <ColumnDefinition Width="80" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="30" />
@@ -40,10 +41,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <TextBlock Text="proto definition" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="0" Margin="5" />
-        <TextBlock Text="serialized data" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" Margin="5" />
         <TextBox Name="protoInput" Style="{StaticResource placeHolder}" Tag="drag&amp;drop" Grid.Row="0" Grid.Column="1" Margin="5"/>
-        <TextBox Name="dataInput" Style="{StaticResource placeHolder}" Tag="drag&amp;drop" Grid.Row="1" Grid.Column="1" Margin="5" />
         <Button Name="protoBrowse" Content="browse..." Grid.Column="2" Grid.Row="0" Margin="5" />
+
+        <TextBlock Text="serialized data" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" Margin="5" />
+        <TextBox Name="dataInput" Style="{StaticResource placeHolder}" Tag="drag&amp;drop" Grid.Row="1" Grid.Column="1" Margin="5" />
         <Button Name="dataBrowse" Content="browse..." Grid.Column="2" Grid.Row="1" Margin="5" />
+        <Button Name="dataNew" Content="new..." Grid.Column="3" Grid.Row="1" Margin="5" />
     </Grid>
 </Window>

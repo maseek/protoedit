@@ -37,10 +37,18 @@ type EnumValueDescriptor =
 
 type EnumDescriptor =
     {Name : string;
-    Values : EnumValueDescriptor}
+    Values : EnumValueDescriptor list}
 
 type ProtoDescriptor = 
     {Name : string;
-    Children : ProtoDescriptor;
-    Fields : FieldDescriptor;
-    Enums : EnumDescriptor}
+    Children : ProtoDescriptor list;
+    Fields : FieldDescriptor list;
+    Enums : EnumDescriptor list}
+
+type ProtoCrumb = 
+    | ProtoCrumb of string
+    | EnumCrumb of string
+
+type ProtoCrumbs = ProtoCrumb list
+
+type ProtoZipper = ProtoDescriptor * ProtoCrumbs

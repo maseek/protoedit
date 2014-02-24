@@ -51,9 +51,9 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
+    <Compile Include="src\core\ProtoDescriptor.fs" />
     <Compile Include="src\core\ParseIn.fs" />
     <Compile Include="src\core\ParseOut.fs" />
-    <Compile Include="src\core\ProtoDescriptor.fs" />
     <Resource Include="src\ApplicationResources.xaml">
       <Link>src\ApplicationResources.xaml</Link>
     </Resource>
