@@ -46,8 +46,8 @@ type ProtoDescriptor =
     Enums : EnumDescriptor list}
 
 type ProtoCrumb = 
-    | ProtoCrumb of string
-    | EnumCrumb of string
+    | ProtoCrumb
+    | EnumCrumb
 
 type ProtoCrumbs = ProtoCrumb list
 
