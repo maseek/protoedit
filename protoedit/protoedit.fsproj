@@ -51,9 +51,6 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <Compile Include="src\core\ProtoDescriptor.fs" />
-    <Compile Include="src\core\ParseIn.fs" />
-    <Compile Include="src\core\ParseOut.fs" />
     <Resource Include="src\ApplicationResources.xaml">
       <Link>src\ApplicationResources.xaml</Link>
     </Resource>
@@ -63,6 +60,9 @@
     <None Include="src\packages.config">
       <Link>src\packages.config</Link>
     </None>
+    <Compile Include="src\ProtoDescriptor.fs" />
+    <Compile Include="src\ParseIn.fs" />
+    <Compile Include="src\ParseOut.fs" />
     <Compile Include="src\App.fs" />
   </ItemGroup>
   <ItemGroup>

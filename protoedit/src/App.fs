@@ -40,7 +40,7 @@ type App(window : MainWindow) =
             then
                 let filePath = openFileDialog.FileName
                 let fileLines = readFileLines filePath
-                let protoDescriptor = parseProtoFile fileLines
+                let protoDescriptor = parseProtoFile filePath fileLines
                 _protoInput.Text <- filePath
 
     member this.dataBrowseHandler (e : RoutedEventArgs) =
