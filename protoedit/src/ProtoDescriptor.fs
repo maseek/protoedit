@@ -47,8 +47,7 @@ type MessageDescriptor =
 
 type ProtoDescriptor = 
     {FilePath : string;
-    Children : MessageDescriptor list;
-    Fields : FieldDescriptor list;
+    Messages : MessageDescriptor list;
     Enums : EnumDescriptor list}
 
 type ProtoCrumb = 
@@ -58,5 +57,4 @@ type ProtoCrumb =
 type ProtoCrumbs = ProtoCrumb list
 
 type ProtoZipper = ProtoDescriptor * ProtoCrumbs
-type EnumZipper = EnumDescriptor list * ProtoCrumbs
 type MessageZipper = MessageDescriptor list * ProtoCrumbs
