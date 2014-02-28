@@ -1,5 +1,6 @@
 ﻿module ParseIn
 
+open System
 open ProtoDescriptor
 
 let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : ProtoZipper =
@@ -23,8 +24,37 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
             ({firstMessage with Children = (addEnum name firstMessage.Children bs) |> fst} :: List.tail messages, EnumCrumb :: crumbs)
         | _ -> (messages, crumbs)
 
-    //TODO:
-    let rec addMessageField definition messages crumbs : MessageZipper = (messages, crumbs)
+
+    let parseFieldDescriptor words : FieldDescriptor option =
+        let parseFieldDescriptorType word : FieldType option =
+            match word with
+            | "string" -> Some(FieldType.TypeString)
+            | _ -> None
+
+        let parseFieldDescriptorNumber word : int option =
+            try
+                Some(Int32.Parse(word))
+            with
+                | :? FormatException -> None
+
+        match words with
+        | "required" :: fType :: fName :: eq :: fNumber :: _ -> 
+            let fieldType = parseFieldDescriptorType fType
+            let fieldNumber = parseFieldDescriptorNumber fNumber
+            match fieldType, fieldNumber with
+                | Some(fType), Some(fNumber) -> Some({Label = FieldLabel.LabelRequired; Type = fType; Name = fName; Number = fNumber})
+                | _ -> None
+        | _ -> None
+
+    let rec addMessageField words messages crumbs : MessageZipper = 
+        match crumbs with 
+        | [MessageCrumb] -> 
+            match (parseFieldDescriptor words) with
+            | Some(x) ->
+                let firstMessage = List.head messages
+                ({firstMessage with Fields = x :: firstMessage.Fields} :: List.tail messages, crumbs)
+            | None -> (messages, crumbs)
+        | _ -> (messages, crumbs)
 
     match words with
     | "message" :: xs -> 
@@ -41,7 +71,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
         match breadcrumbs with
         | [] -> (proto, breadcrumbs)
         | _ -> 
-            let messages, crumbs = addMessageField xs proto.Messages breadcrumbs
+            let messages, crumbs = addMessageField words proto.Messages breadcrumbs
             ({proto with Messages = messages}, crumbs)
     | _ -> (proto, breadcrumbs)
 
