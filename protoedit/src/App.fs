@@ -4,13 +4,14 @@ open System
 open System.Windows
 open System.Windows.Controls
 open System.Windows.Media
+open System.IO
 open FSharpx
 open ParseIn
 
 type MainWindow = XAML<"src/MainWindow.xaml">
 
-let readBinaryFile (filePath:string) = System.IO.File.ReadAllBytes(filePath)
-let readFileLines (filePath:string) = System.IO.File.ReadLines(filePath)
+let readBinaryFile (filePath:string) = File.ReadAllBytes(filePath)
+let readFileLines (filePath:string) = File.ReadLines(filePath)
 
 type App(window : MainWindow) = 
     let _window = window
@@ -19,61 +20,68 @@ type App(window : MainWindow) =
     let _dataInput : TextBox = _window.Root.FindName "dataInput" |> unbox
     let _dataBrowse : Button = _window.Root.FindName "dataBrowse" |> unbox
     let _dataNew : Button = _window.Root.FindName "dataNew" |> unbox
+    
+    let tryReadProtoFile filePath =
+        async {
+            if File.Exists(filePath) then
+                let fileLines = readFileLines filePath
+                let protoDescriptor = parseProtoFile filePath fileLines
+                do ()
+        } |> Async.StartAsTask
 
-    member this.window
-        with get () = _window
-
-    member this.previewDragHandler (e : DragEventArgs) =
+    let previewDragHandler (e : DragEventArgs) =
         e.Effects <- DragDropEffects.Link
         e.Handled <- true
 
-    member this.previewDropHandler (e : DragEventArgs) =
+    let previewDropHandler (e : DragEventArgs) =
         let filePath : string [] = e.Data.GetData DataFormats.FileDrop |> unbox
         let source : TextBox = e.Source |> unbox
         source.Text <- String.Format("{0}", filePath.[0])
 
-    member this.protoBrowseHandler (e : RoutedEventArgs) =
+    let protoBrowseClickHandler (e : RoutedEventArgs) =
         let openFileDialog = new Forms.OpenFileDialog()
         openFileDialog.Filter <- "Proto files (*.proto)|*.proto|All Files (*.*)|*.*"
         let result = openFileDialog.ShowDialog ()
-        if result.Equals(Forms.DialogResult.OK) 
-            then
-                let filePath = openFileDialog.FileName
-                let fileLines = readFileLines filePath
-                let protoDescriptor = parseProtoFile filePath fileLines
-                _protoInput.Text <- filePath
+        if result.Equals(Forms.DialogResult.OK) then
+            let filePath = openFileDialog.FileName
+            let task = tryReadProtoFile filePath
+            _protoInput.Text <- filePath
 
-    member this.dataBrowseHandler (e : RoutedEventArgs) =
+    let dataBrowseClickHandler (e : RoutedEventArgs) =
         let openFileDialog = new Forms.OpenFileDialog()
         openFileDialog.Filter <- "All Files (*.*)|*.*"
         let result = openFileDialog.ShowDialog ()
-        if result.Equals(Forms.DialogResult.OK) 
-            then _dataInput.Text <- openFileDialog.FileName
+        if result.Equals(Forms.DialogResult.OK) then 
+            _dataInput.Text <- openFileDialog.FileName
 
-    member this.dataNewHandler (e : RoutedEventArgs) =
+    let dataNewClickHandler (e : RoutedEventArgs) =
         let saveFileDialog = new Forms.SaveFileDialog()
         saveFileDialog.Filter <- "Binary file (*.bin)|*.bin"
         saveFileDialog.FileName <- "data"
         saveFileDialog.DefaultExt <- ".bin"
         let result = saveFileDialog.ShowDialog ()
-        if result.Equals(Forms.DialogResult.OK)
-            then _dataInput.Text <- saveFileDialog.FileName
+        if result.Equals(Forms.DialogResult.OK) then 
+            _dataInput.Text <- saveFileDialog.FileName
+    do
+        _window.Root.Loaded.Add(fun _ ->
+            _protoInput.PreviewDragOver.Add(previewDragHandler)
+            _protoInput.PreviewDrop.Add(previewDropHandler)
+            _protoInput.GotFocus.Add(protoBrowseClickHandler)
+            _protoBrowse.Click.Add(protoBrowseClickHandler)
+            _dataInput.PreviewDragOver.Add(previewDragHandler)
+            _dataInput.PreviewDrop.Add(previewDropHandler) 
+            _dataInput.GotFocus.Add(dataBrowseClickHandler)
+            _dataBrowse.Click.Add(dataBrowseClickHandler)
+            _dataNew.Click.Add(dataNewClickHandler)
+        )
 
-    member this.Init () =
-        _protoInput.PreviewDragOver.Add(this.previewDragHandler)
-        _protoInput.PreviewDrop.Add(this.previewDropHandler)
-        _protoBrowse.Click.Add(this.protoBrowseHandler)
-        _dataInput.PreviewDragOver.Add(this.previewDragHandler)
-        _dataInput.PreviewDrop.Add(this.previewDropHandler) 
-        _dataBrowse.Click.Add(this.dataBrowseHandler)
-        _dataNew.Click.Add(this.dataNewHandler)
+    member this.Root = _window.Root
 
     new() = App(new MainWindow())
 
 let loadWindow() =
     let app = App()
-    app.Init()
-    app.window.Root
+    app.Root
 
 [<STAThread>]
 (new Application()).Run(loadWindow()) |> ignore

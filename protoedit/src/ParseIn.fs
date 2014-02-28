@@ -3,7 +3,7 @@
 open ProtoDescriptor
 
 let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : ProtoZipper =
-    let words = line.Split [|' '|] |> Array.toList |> List.filter (fun x -> not (x.Equals("")))
+    let words = line.Split ' ' |> Array.toList |> List.filter (fun x -> not (x.Equals("")))
     
     let rec addMessage name messages crumbs : MessageZipper =
         match crumbs with
