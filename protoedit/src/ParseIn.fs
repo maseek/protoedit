@@ -28,6 +28,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
     let parseFieldDescriptor words : FieldDescriptor option =
         let parseFieldDescriptorType word : FieldType option =
             match word with
+            | "int32" -> Some(FieldType.TypeInt32)
             | "string" -> Some(FieldType.TypeString)
             | _ -> None
 
@@ -37,13 +38,20 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
             with
                 | :? FormatException -> None
 
-        match words with
-        | "required" :: fType :: fName :: eq :: fNumber :: _ -> 
+        let buildFieldDescriptor fLabel fType fName (fNumber : string) =
             let fieldType = parseFieldDescriptorType fType
-            let fieldNumber = parseFieldDescriptorNumber fNumber
+            let fieldNumber = parseFieldDescriptorNumber (fNumber.TrimEnd ';')
             match fieldType, fieldNumber with
-                | Some(fType), Some(fNumber) -> Some({Label = FieldLabel.LabelRequired; Type = fType; Name = fName; Number = fNumber})
+                | Some(fType), Some(fNumber) -> Some({Label = fLabel; Type = fType; Name = fName; Number = fNumber})
                 | _ -> None
+
+        match words with
+        | "optional" :: fType :: fName :: "=" :: fNumber :: _ -> 
+            buildFieldDescriptor FieldLabel.LabelOptional fType fName fNumber
+        | "required" :: fType :: fName :: "=" :: fNumber :: _ -> 
+            buildFieldDescriptor FieldLabel.LabelRequired fType fName fNumber
+        | "repeated" :: fType :: fName :: "=" :: fNumber :: _ -> 
+            buildFieldDescriptor FieldLabel.LabelRepeated fType fName fNumber
         | _ -> None
 
     let rec addMessageField words messages crumbs : MessageZipper = 
@@ -54,6 +62,10 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                 let firstMessage = List.head messages
                 ({firstMessage with Fields = x :: firstMessage.Fields} :: List.tail messages, crumbs)
             | None -> (messages, crumbs)
+        | MessageCrumb :: bs -> 
+            let firstMessage = List.head messages
+            let children, fCrumbs = addMessageField words firstMessage.Children bs
+            ({firstMessage with Children = children} :: List.tail messages, crumbs)
         | _ -> (messages, crumbs)
 
     match words with
@@ -72,7 +84,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
         | [] -> (proto, breadcrumbs)
         | _ -> 
             let messages, crumbs = addMessageField words proto.Messages breadcrumbs
-            ({proto with Messages = messages}, crumbs)
+            ({proto with Messages = messages}, breadcrumbs)
     | _ -> (proto, breadcrumbs)
 
 let parseProtoFile (filePath : string) (fileLines : seq<string>) =
