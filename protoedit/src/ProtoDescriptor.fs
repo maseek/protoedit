@@ -20,6 +20,24 @@ type FieldType =
     | TypeSInt32 = 17
     | TypeSInt64 = 18
 
+let fieldTypes =
+    Map.empty.
+        Add("double", FieldType.TypeDouble).
+        Add("float", FieldType.TypeFloat).
+        Add("int32", FieldType.TypeInt32).
+        Add("int64", FieldType.TypeInt64).
+        Add("uint32", FieldType.TypeUint32).
+        Add("uint64", FieldType.TypeUint64).
+        Add("sint32", FieldType.TypeSInt32).
+        Add("sint64", FieldType.TypeSInt64).
+        Add("fixed32", FieldType.TypeFixed32).
+        Add("fixed64", FieldType.TypeFixed64).
+        Add("sfixed32", FieldType.TypeSFixed32).
+        Add("sfixed64", FieldType.TypeSFixed64).
+        Add("bool", FieldType.TypeBool).
+        Add("string", FieldType.TypeString).
+        Add("bytes", FieldType.TypeBytes)
+
 type FieldLabel =
     | LabelOptional = 1
     | LabelRequired = 2

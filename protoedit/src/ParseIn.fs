@@ -27,10 +27,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
     let parseFieldDescriptor words : FieldDescriptor option =
         let parseFieldDescriptorType word : FieldType option =
-            match word with
-            | "int32" -> Some(FieldType.TypeInt32)
-            | "string" -> Some(FieldType.TypeString)
-            | _ -> None
+            fieldTypes.TryFind word
 
         let parseFieldDescriptorNumber word : int option =
             try
