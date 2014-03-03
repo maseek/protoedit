@@ -1,6 +1,6 @@
 ﻿module ProtoDescriptor
 
-type FieldType = 
+type PrimitiveFieldType = 
     | TypeDouble = 1
     | TypeFloat = 2
     | TypeInt64 = 3
@@ -20,23 +20,31 @@ type FieldType =
     | TypeSInt32 = 17
     | TypeSInt64 = 18
 
-let fieldTypes =
+type EnumFieldType =
+    | FieldTypeNode of (string * EnumFieldType)
+    | FieldTypeEmpty
+
+type FieldType =
+    | Primitive of PrimitiveFieldType
+    | Enum of EnumFieldType
+
+let primitiveFieldTypes =
     Map.empty.
-        Add("double", FieldType.TypeDouble).
-        Add("float", FieldType.TypeFloat).
-        Add("int32", FieldType.TypeInt32).
-        Add("int64", FieldType.TypeInt64).
-        Add("uint32", FieldType.TypeUint32).
-        Add("uint64", FieldType.TypeUint64).
-        Add("sint32", FieldType.TypeSInt32).
-        Add("sint64", FieldType.TypeSInt64).
-        Add("fixed32", FieldType.TypeFixed32).
-        Add("fixed64", FieldType.TypeFixed64).
-        Add("sfixed32", FieldType.TypeSFixed32).
-        Add("sfixed64", FieldType.TypeSFixed64).
-        Add("bool", FieldType.TypeBool).
-        Add("string", FieldType.TypeString).
-        Add("bytes", FieldType.TypeBytes)
+        Add("double", PrimitiveFieldType.TypeDouble).
+        Add("float", PrimitiveFieldType.TypeFloat).
+        Add("int32", PrimitiveFieldType.TypeInt32).
+        Add("int64", PrimitiveFieldType.TypeInt64).
+        Add("uint32", PrimitiveFieldType.TypeUint32).
+        Add("uint64", PrimitiveFieldType.TypeUint64).
+        Add("sint32", PrimitiveFieldType.TypeSInt32).
+        Add("sint64", PrimitiveFieldType.TypeSInt64).
+        Add("fixed32", PrimitiveFieldType.TypeFixed32).
+        Add("fixed64", PrimitiveFieldType.TypeFixed64).
+        Add("sfixed32", PrimitiveFieldType.TypeSFixed32).
+        Add("sfixed64", PrimitiveFieldType.TypeSFixed64).
+        Add("bool", PrimitiveFieldType.TypeBool).
+        Add("string", PrimitiveFieldType.TypeString).
+        Add("bytes", PrimitiveFieldType.TypeBytes)
 
 type FieldLabel =
     | LabelOptional = 1

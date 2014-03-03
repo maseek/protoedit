@@ -27,7 +27,20 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
     let parseFieldDescriptor words : FieldDescriptor option =
         let parseFieldDescriptorType word : FieldType option =
-            fieldTypes.TryFind word
+            let primitiveFieldType = primitiveFieldTypes.TryFind word
+            match primitiveFieldType with
+            | Some(fType) -> Some(Primitive fType)
+            | None ->
+                //TODO: go through enums first to check it exits
+                let rec parseEnumFieldType enumNames =
+                    match enumNames with
+                    | [e] -> FieldTypeNode (e, FieldTypeEmpty)
+                    | e :: es -> FieldTypeNode (e, parseEnumFieldType es)
+                    | _ -> FieldTypeEmpty
+                let enumFieldType = parseEnumFieldType (word.Split '.' |> Array.toList)
+                match enumFieldType with
+                | FieldTypeNode (_,_) -> Some(Enum enumFieldType)
+                | FieldTypeEmpty -> None
 
         let parseFieldDescriptorNumber word : int option =
             try
