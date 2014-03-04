@@ -26,29 +26,50 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
 
     let parseFieldDescriptor words : FieldDescriptor option =
-        let parseFieldDescriptorType word : FieldType option =
-            let primitiveFieldType = primitiveFieldTypes.TryFind word
-            match primitiveFieldType with
-            | Some(fType) -> Some(Primitive fType)
-            | None ->
-                //TODO: go through enums first to check it exits
-                let rec parseEnumFieldType enumNames =
-                    match enumNames with
-                    | [e] -> FieldTypeNode (e, FieldTypeEmpty)
-                    | e :: es -> FieldTypeNode (e, parseEnumFieldType es)
-                    | _ -> FieldTypeEmpty
-                let enumFieldType = parseEnumFieldType (word.Split '.' |> Array.toList)
-                match enumFieldType with
-                | FieldTypeNode (_,_) -> Some(Enum enumFieldType)
-                | FieldTypeEmpty -> None
-
-        let parseFieldDescriptorNumber word : int option =
-            try
-                Some(Int32.Parse(word))
-            with
-                | :? FormatException -> None
-
         let buildFieldDescriptor fLabel fType fName (fNumber : string) =
+            let parseFieldDescriptorType word : FieldType option =
+                let primitiveFieldType = primitiveFieldTypes.TryFind word
+                match primitiveFieldType with
+                | Some(fType) -> Some(Primitive fType)
+                | None ->
+                    //TODO: if enum doesn't exist try for message
+                    //TODO: remove redundancy by replacing proto descriptor with message descriptor
+                    let rec parseEnumFieldType enumNames =
+                        match enumNames with
+                        | [e] -> EnumTypeNode (e, EnumTypeEmpty)
+                        | e :: es -> EnumTypeNode (e, parseEnumFieldType es)
+                        | _ -> EnumTypeEmpty
+                    let enumFieldType = parseEnumFieldType (word.Split '.' |> Array.toList)
+                    let rec doesExist enum (message : MessageDescriptor) =
+                        match enum with
+                        | EnumTypeNode (name, EnumTypeEmpty) -> List.fold (fun s (e : EnumDescriptor) -> s || e.Name.Equals(name)) false message.Enums
+                        | EnumTypeNode (name, child) -> 
+                            let message = (List.fold (fun s (m : MessageDescriptor) -> if m.Name.Equals(name) then Some(m) else None) None message.Children)
+                            match message with
+                            | Some(m) -> doesExist child m
+                            | None -> false
+                        | _ -> false
+                    let exists =
+                        match enumFieldType with
+                        | EnumTypeNode (name, EnumTypeEmpty) -> List.fold (fun s (e : EnumDescriptor) -> s || e.Name.Equals(name)) false proto.Enums
+                        | EnumTypeNode (name, child) -> 
+                            let message = (List.fold (fun s (m : MessageDescriptor) -> if m.Name.Equals(name) then Some(m) else None) None proto.Messages)
+                            match message with
+                            | Some(m) -> doesExist child m
+                            | None -> false
+                        | _ -> false
+                    if exists then
+                        match enumFieldType with
+                        | EnumTypeNode (_,_) -> Some(Enum enumFieldType)
+                        | EnumTypeEmpty -> None
+                    else None
+
+            let parseFieldDescriptorNumber word : int option =
+                try
+                    Some(Int32.Parse(word))
+                with
+                    | :? FormatException -> None
+
             let fieldType = parseFieldDescriptorType fType
             let fieldNumber = parseFieldDescriptorNumber (fNumber.TrimEnd ';')
             match fieldType, fieldNumber with

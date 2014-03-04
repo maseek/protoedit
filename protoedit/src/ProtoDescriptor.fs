@@ -21,8 +21,8 @@ type PrimitiveFieldType =
     | TypeSInt64 = 18
 
 type EnumFieldType =
-    | FieldTypeNode of (string * EnumFieldType)
-    | FieldTypeEmpty
+    | EnumTypeNode of (string * EnumFieldType)
+    | EnumTypeEmpty
 
 type FieldType =
     | Primitive of PrimitiveFieldType
