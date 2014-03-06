@@ -19,14 +19,19 @@ type PrimitiveFieldType =
     | TypeSFixed64 = 16
     | TypeSInt32 = 17
     | TypeSInt64 = 18
-
+    
 type EnumFieldType =
     | EnumTypeNode of (string * EnumFieldType)
     | EnumTypeEmpty
 
+type MessageFieldType =
+    | MessageTypeNode of (string * MessageFieldType)
+    | MessageTypeEmpty
+
 type FieldType =
     | Primitive of PrimitiveFieldType
     | Enum of EnumFieldType
+    | Message of MessageFieldType
 
 let primitiveFieldTypes =
     Map.empty.
@@ -55,7 +60,8 @@ type FieldDescriptor =
     {Name : string;
     Number : int;
     Type : FieldType;
-    Label : FieldLabel;}
+    Label : FieldLabel;
+    Default : obj option}
 
 type EnumValueDescriptor =
     {Name : string;
