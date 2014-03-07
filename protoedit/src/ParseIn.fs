@@ -26,7 +26,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
     let rec addMessageField words messages crumbs : MessagesZipper =
         let parseFieldDescriptor words : FieldDescriptor option =
-            let buildFieldDescriptor fLabel fType fName (fNumber : string) =
+            let buildFieldDescriptor fLabel fType fName (fNumber : string) rest =
                 let parseFieldDescriptorType word : FieldType option =
                     match primitiveFieldTypes.TryFind word with
                     | Some(fType) -> Some(Primitive fType)
@@ -39,7 +39,12 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
                         let enumFieldType = parseEnumFieldType (word.Split '.' |> Array.toList)
 
-                        //TODO: fix add search for current position in crumbs first
+                        let rec getCurrentMessage proto crumbs =
+                            match crumbs with
+                            | [MessageCrumb] -> List.head proto.Messages
+                            | MessageCrumb :: bs -> getCurrentMessage (List.head proto.Messages) bs
+                            | _ -> proto
+
                         let rec doesEnumExist enumFieldType message =
                             match enumFieldType with
                             | EnumTypeNode (name, EnumTypeEmpty) -> List.fold (fun s (e : EnumDescriptor) -> s || e.Name.Equals(name)) false message.Enums
@@ -50,7 +55,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                                 | None -> false
                             | _ -> false
 
-                        if doesEnumExist enumFieldType proto then
+                        if (doesEnumExist enumFieldType (getCurrentMessage proto crumbs)) || (doesEnumExist enumFieldType proto) then
                             match enumFieldType with
                             | EnumTypeNode (_,_) -> Some(Enum enumFieldType)
                             | EnumTypeEmpty -> None
@@ -63,14 +68,13 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
                             let messageFieldType = parseMessageFieldType (word.Split '.' |> Array.toList)
 
-                            //TODO: fix add search for current position in crumbs first
                             let rec doesMessageExist messageFieldType messages =
                                 match messageFieldType with
                                 | MessageTypeNode (name, MessageTypeEmpty) -> List.fold (fun s (m : MessageDescriptor) -> s || m.Name.Equals(name)) false messages
                                 | MessageTypeNode (name, child) -> List.fold (fun s (m : MessageDescriptor) -> s || m.Name.Equals(name) && doesMessageExist child m.Messages) false messages
                                 | _ -> false
 
-                            if doesMessageExist messageFieldType proto.Messages then
+                            if (doesMessageExist messageFieldType (getCurrentMessage proto crumbs).Messages) || (doesMessageExist messageFieldType proto.Messages) then
                                 match messageFieldType with
                                 | MessageTypeNode (_,_) -> Some(Message messageFieldType)
                                 | MessageTypeEmpty -> None
@@ -82,10 +86,19 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                     with
                         | :? FormatException -> None
 
+                //TODO: finish - fold, trim and then pattern match
+                let parseFieldDescriptorDefault fieldType (rest : String list) : obj option =
+                    match (fieldType, rest.Head.TrimStart('[') :: rest.Tail) with
+                    | (Some(fType), "default" :: "=" :: value :: _) ->
+                        let stringValue = value.TrimEnd([|']'; ';'|])
+                        None
+                    | _ -> None
+
                 let fieldType = parseFieldDescriptorType fType
                 let fieldNumber = parseFieldDescriptorNumber (fNumber.TrimEnd ';')
+                let fieldDefault = parseFieldDescriptorDefault fieldType rest
                 match fieldType, fieldNumber with
-                    | Some(fType), Some(fNumber) -> Some({Label = fLabel; Type = fType; Name = fName; Number = fNumber; Default = None})
+                    | Some(fType), Some(fNumber) -> Some({Label = fLabel; Type = fType; Name = fName; Number = fNumber; Default = fieldDefault})
                     | _ -> None
 
             let fLabel =
@@ -97,7 +110,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
             match fLabel, List.tail words with
             | Some(fLabel), fType :: fName :: "=" :: fNumber :: rest -> 
-                buildFieldDescriptor fLabel fType fName fNumber
+                buildFieldDescriptor fLabel fType fName fNumber rest
             | _ -> None
 
         match crumbs with 
