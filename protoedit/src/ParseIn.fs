@@ -3,8 +3,10 @@
 open System
 open ProtoDescriptor
 
+let filterEmpty (xs : String list) = List.filter (fun x -> not (x.Equals(""))) xs
+
 let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : ProtoZipper =
-    let words = line.Split ' ' |> Array.toList |> List.filter (fun x -> not (x.Equals("")))
+    let words = line.Split ' ' |> Array.toList |>  filterEmpty
     
     let rec addMessage name messages crumbs : MessagesZipper =
         match crumbs with
@@ -86,12 +88,32 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                     with
                         | :? FormatException -> None
 
-                //TODO: finish - fold, trim and then pattern match
                 let parseFieldDescriptorDefault fieldType (rest : String list) : obj option =
-                    match (fieldType, rest.Head.TrimStart('[') :: rest.Tail) with
-                    | (Some(fType), "default" :: "=" :: value :: _) ->
-                        let stringValue = value.TrimEnd([|']'; ';'|])
-                        None
+                    let stripped = (List.fold (fun x xs -> x + xs) "" rest).TrimStart('[').TrimEnd([|']'; ';'|]).Split('=') |> Array.toList |> filterEmpty
+                    match (fieldType, stripped) with
+                    | (Some(fType), "default" :: value :: _) ->
+                        match fType with
+                        | Primitive primitiveFieldType ->
+                            match primitiveFieldType with
+                            | PrimitiveFieldType.TypeDouble -> let (ok, v) = System.Double.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeFloat -> let (ok, v) = System.Single.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeInt32  -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeInt64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeUInt32 -> let (ok, v) = System.UInt32.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeUInt64 -> let (ok, v) = System.UInt64.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeSInt32  -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeSInt64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeFixed32 -> let (ok, v) = System.UInt32.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeFixed64 -> let (ok, v) = System.UInt64.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeSFixed32 -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeSFixed64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeBool -> let (ok, v) = System.Boolean.TryParse(value) in if ok then Some(v |> box) else None
+                            | PrimitiveFieldType.TypeString -> Some(value.Trim('"') |> box)
+                            | PrimitiveFieldType.TypeBytes -> Some(System.Text.Encoding.UTF8.GetBytes(value) |> box)
+                            | _ -> None
+                        //TODO: finish - enum default value
+                        | Enum enumFieldType -> None
+                        | _ -> None
                     | _ -> None
 
                 let fieldType = parseFieldDescriptorType fType

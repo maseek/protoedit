@@ -3,22 +3,19 @@
 type PrimitiveFieldType = 
     | TypeDouble = 1
     | TypeFloat = 2
-    | TypeInt64 = 3
-    | TypeUint64 = 4
-    | TypeInt32 = 5
-    | TypeFixed64 = 6
-    | TypeFixed32 = 7
-    | TypeBool = 8
-    | TypeString = 9
-    | TypeGroup = 10
-    | TypeMessage = 11
-    | TypeBytes = 12
-    | TypeUint32 = 13
-    | TypeEnum = 14
-    | TypeSFixed32 = 15
-    | TypeSFixed64 = 16
-    | TypeSInt32 = 17
-    | TypeSInt64 = 18
+    | TypeInt32 = 3
+    | TypeInt64 = 5
+    | TypeUInt32 = 6
+    | TypeUInt64 = 7
+    | TypeSInt32 = 8
+    | TypeSInt64 = 9
+    | TypeFixed32 = 10
+    | TypeFixed64 = 11
+    | TypeSFixed32 = 12
+    | TypeSFixed64 = 13
+    | TypeBool = 14
+    | TypeString = 15
+    | TypeBytes = 16
     
 type EnumFieldType =
     | EnumTypeNode of (string * EnumFieldType)
@@ -39,8 +36,8 @@ let primitiveFieldTypes =
         Add("float", PrimitiveFieldType.TypeFloat).
         Add("int32", PrimitiveFieldType.TypeInt32).
         Add("int64", PrimitiveFieldType.TypeInt64).
-        Add("uint32", PrimitiveFieldType.TypeUint32).
-        Add("uint64", PrimitiveFieldType.TypeUint64).
+        Add("uint32", PrimitiveFieldType.TypeUInt32).
+        Add("uint64", PrimitiveFieldType.TypeUInt64).
         Add("sint32", PrimitiveFieldType.TypeSInt32).
         Add("sint64", PrimitiveFieldType.TypeSInt64).
         Add("fixed32", PrimitiveFieldType.TypeFixed32).
