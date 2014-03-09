@@ -29,6 +29,32 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
     let rec addMessageField words messages crumbs : MessagesZipper =
         let parseFieldDescriptor words : FieldDescriptor option =
             let buildFieldDescriptor fLabel fType fName (fNumber : string) rest =
+                let rec getCurrentMessage proto crumbs =
+                    match crumbs with
+                    | [MessageCrumb] -> List.head proto.Messages
+                    | MessageCrumb :: bs -> getCurrentMessage (List.head proto.Messages) bs
+                    | _ -> proto
+
+                let rec getEnumDescriptor enumFieldType message =
+                    match enumFieldType with
+                    | EnumTypeNode (name, EnumTypeEmpty) -> 
+                        let enums = List.filter (fun (e : EnumDescriptor) -> e.Name.Equals(name)) message.Enums
+                        if enums.Length > 0 then Some(enums.Head) else None
+                    | EnumTypeNode (name, child) -> 
+                        let message = (List.fold (fun s (m : MessageDescriptor) -> if m.Name.Equals(name) then Some(m) else None) None message.Messages)
+                        match message with
+                        | Some(m) -> getEnumDescriptor child m
+                        | None -> None
+                    | _ -> None
+
+                let getRelativeOrAbsoluteEnumDescriptor enumFieldType =
+                    let relativePathEnum = getEnumDescriptor enumFieldType (getCurrentMessage proto crumbs)
+                    let absolutePathEnum = getEnumDescriptor enumFieldType proto
+                    match (relativePathEnum, absolutePathEnum) with
+                    | Some _, _ -> relativePathEnum
+                    | _, Some _ -> absolutePathEnum
+                    | _,_ -> None
+
                 let parseFieldDescriptorType word : FieldType option =
                     match primitiveFieldTypes.TryFind word with
                     | Some(fType) -> Some(Primitive fType)
@@ -40,13 +66,8 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                             | _ -> EnumTypeEmpty
 
                         let enumFieldType = parseEnumFieldType (word.Split '.' |> Array.toList)
-
-                        let rec getCurrentMessage proto crumbs =
-                            match crumbs with
-                            | [MessageCrumb] -> List.head proto.Messages
-                            | MessageCrumb :: bs -> getCurrentMessage (List.head proto.Messages) bs
-                            | _ -> proto
-
+                        
+                            
                         let rec doesEnumExist enumFieldType message =
                             match enumFieldType with
                             | EnumTypeNode (name, EnumTypeEmpty) -> List.fold (fun s (e : EnumDescriptor) -> s || e.Name.Equals(name)) false message.Enums
@@ -111,8 +132,14 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                             | PrimitiveFieldType.TypeString -> Some(value.Trim('"') |> box)
                             | PrimitiveFieldType.TypeBytes -> Some(System.Text.Encoding.UTF8.GetBytes(value) |> box)
                             | _ -> None
-                        //TODO: finish - enum default value
-                        | Enum enumFieldType -> None
+                        //TODO: check after enum values parsing is done
+                        | Enum enumFieldType -> 
+                            let enum = getRelativeOrAbsoluteEnumDescriptor enumFieldType
+                            match enum with
+                            | Some e ->
+                                let enumVals = List.filter (fun (enumVal : EnumValueDescriptor) -> enumVal.Name.Equals(value)) e.Values
+                                if enumVals.Length > 0 then Some((List.head enumVals).Number |> box) else None
+                            | None -> None
                         | _ -> None
                     | _ -> None
 
