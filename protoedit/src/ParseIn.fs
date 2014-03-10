@@ -10,20 +10,36 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
     
     let rec addMessage name messages crumbs : MessagesZipper =
         match crumbs with
-        | [] -> ({Name = name; Messages = []; Fields = []; Enums = []} :: messages, MessageCrumb :: crumbs)
+        | [] -> ({Name = name; Messages = []; Fields = []; Enums = []} :: messages, List.append crumbs [MessageCrumb])
         | MessageCrumb :: bs -> 
             let firstMessage = List.head messages
-            ({firstMessage with Messages = (addMessage name firstMessage.Messages bs) |> fst} :: List.tail messages, MessageCrumb :: crumbs)
+            ({firstMessage with Messages = (addMessage name firstMessage.Messages bs) |> fst} :: List.tail messages, List.append crumbs [MessageCrumb])
         | _ -> (messages, crumbs)
 
     let rec addEnum name (messages : MessageDescriptor list) crumbs : MessagesZipper =
         match crumbs with
         | [MessageCrumb] ->
             let firstMessage = List.head messages
-            ({firstMessage with Enums = {Name = name; Values = []} :: firstMessage.Enums} :: List.tail messages, EnumCrumb :: crumbs)
+            ({firstMessage with Enums = {Name = name; Values = []} :: firstMessage.Enums} :: List.tail messages, List.append crumbs [EnumCrumb])
         | MessageCrumb :: bs -> 
             let firstMessage = List.head messages
-            ({firstMessage with Messages = (addEnum name firstMessage.Messages bs) |> fst} :: List.tail messages, EnumCrumb :: crumbs)
+            ({firstMessage with Messages = (addEnum name firstMessage.Messages bs) |> fst} :: List.tail messages, List.append crumbs [EnumCrumb])
+        | _ -> (messages, crumbs)
+
+    let rec addEnumField name value messages crumbs : MessagesZipper =
+        match crumbs with
+        | [EnumCrumb] ->
+            let firstMessage = List.head messages
+            let firstEnum = List.head firstMessage.Enums
+            let number = let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v) else None
+            match number with
+            | Some(number) -> 
+                let newEnum = {firstEnum with Values = ({Name = name; Number = number} :: firstEnum.Values)}
+                ({firstMessage with Enums = newEnum :: List.tail firstMessage.Enums} :: List.tail messages, crumbs)
+            | _ -> (messages, crumbs)
+        | MessageCrumb :: bs ->
+            let firstMessage = List.head messages
+            ({firstMessage with Messages = (addEnumField name value firstMessage.Messages bs) |> fst} :: List.tail messages, crumbs)
         | _ -> (messages, crumbs)
 
     let rec addMessageField words messages crumbs : MessagesZipper =
@@ -185,13 +201,17 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
         | _ ->
             let messages, crumbs = addEnum (List.head xs) proto.Messages breadcrumbs
             ({proto with Messages = messages}, crumbs)
-    | "}" :: xs -> (proto, List.tail breadcrumbs)
+    | "}" :: xs -> (proto, List.tail (List.rev breadcrumbs))
     | ("required" | "optional" | "repeated") :: xs ->
         match breadcrumbs with
         | [] -> (proto, breadcrumbs)
         | _ -> 
             let messages, crumbs = addMessageField words proto.Messages breadcrumbs
             ({proto with Messages = messages}, breadcrumbs)
+
+    | enumFieldName :: "=" :: enumFieldVal :: _ -> 
+        let protoList, crumbs = addEnumField enumFieldName (enumFieldVal.TrimEnd(';')) [proto] breadcrumbs
+        (List.head protoList, breadcrumbs)
     | _ -> (proto, breadcrumbs)
 
 let parseProtoFile (filePath : string) (fileLines : seq<string>) =
