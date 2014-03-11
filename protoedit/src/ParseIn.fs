@@ -45,12 +45,6 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
     let rec addMessageField words messages crumbs : MessagesZipper =
         let parseFieldDescriptor words : FieldDescriptor option =
             let buildFieldDescriptor fLabel fType fName (fNumber : string) rest =
-                let rec getCurrentMessage proto crumbs =
-                    match crumbs with
-                    | [MessageCrumb] -> List.head proto.Messages
-                    | MessageCrumb :: bs -> getCurrentMessage (List.head proto.Messages) bs
-                    | _ -> proto
-
                 let rec getEnumDescriptor enumFieldType message =
                     match enumFieldType with
                     | EnumTypeNode (name, EnumTypeEmpty) -> 
@@ -64,7 +58,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                     | _ -> None
 
                 let getRelativeOrAbsoluteEnumDescriptor enumFieldType =
-                    let relativePathEnum = getEnumDescriptor enumFieldType (getCurrentMessage proto crumbs)
+                    let relativePathEnum = getEnumDescriptor enumFieldType (List.head messages)
                     let absolutePathEnum = getEnumDescriptor enumFieldType proto
                     match (relativePathEnum, absolutePathEnum) with
                     | Some _, _ -> relativePathEnum
@@ -94,7 +88,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                                 | None -> false
                             | _ -> false
 
-                        if (doesEnumExist enumFieldType (getCurrentMessage proto crumbs)) || (doesEnumExist enumFieldType proto) then
+                        if (doesEnumExist enumFieldType (List.head messages)) || (doesEnumExist enumFieldType proto) then
                             match enumFieldType with
                             | EnumTypeNode (_,_) -> Some(Enum enumFieldType)
                             | EnumTypeEmpty -> None
@@ -113,7 +107,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
                                 | MessageTypeNode (name, child) -> List.fold (fun s (m : MessageDescriptor) -> s || m.Name.Equals(name) && doesMessageExist child m.Messages) false messages
                                 | _ -> false
 
-                            if (doesMessageExist messageFieldType (getCurrentMessage proto crumbs).Messages) || (doesMessageExist messageFieldType proto.Messages) then
+                            if (doesMessageExist messageFieldType (List.head messages).Messages) || (doesMessageExist messageFieldType proto.Messages) then
                                 match messageFieldType with
                                 | MessageTypeNode (_,_) -> Some(Message messageFieldType)
                                 | MessageTypeEmpty -> None
