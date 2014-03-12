@@ -2,11 +2,128 @@
 
 open System
 open ProtoDescriptor
+    module private Helpers =
+        let filterEmpty (xs : String list) = List.filter (fun x -> not (x.Equals(""))) xs
 
-let filterEmpty (xs : String list) = List.filter (fun x -> not (x.Equals(""))) xs
+    module private MessageField =
+
+        let parse fLabel fType fName (fNumber : string) rest currentMessages proto =
+            let rec getEnumDescriptor enumFieldType message =
+                match enumFieldType with
+                | EnumTypeNode (name, EnumTypeEmpty) -> 
+                    let enums = List.filter (fun (e : EnumDescriptor) -> e.Name.Equals(name)) message.Enums
+                    if enums.Length > 0 then Some(enums.Head) else None
+                | EnumTypeNode (name, child) -> 
+                    let message = (List.fold (fun s (m : MessageDescriptor) -> if m.Name.Equals(name) then Some(m) else None) None message.Messages)
+                    match message with
+                    | Some(m) -> getEnumDescriptor child m
+                    | None -> None
+                | _ -> None
+
+            let getRelativeOrAbsoluteEnumDescriptor enumFieldType =
+                let relativePathEnum = getEnumDescriptor enumFieldType (List.head currentMessages)
+                let absolutePathEnum = getEnumDescriptor enumFieldType proto
+                match (relativePathEnum, absolutePathEnum) with
+                | Some _, _ -> relativePathEnum
+                | _, Some _ -> absolutePathEnum
+                | _,_ -> None
+
+            let parseFieldDescriptorType word : FieldType option =
+                match primitiveFieldTypes.TryFind word with
+                | Some(fType) -> Some(Primitive fType)
+                | None ->
+                    let rec parseEnumFieldType enumNames =
+                        match enumNames with
+                        | [e] -> EnumTypeNode (e, EnumTypeEmpty)
+                        | e :: es -> EnumTypeNode (e, parseEnumFieldType es)
+                        | _ -> EnumTypeEmpty
+
+                    let enumFieldType = parseEnumFieldType (word.Split '.' |> Array.toList)
+                            
+                    let rec doesEnumExist enumFieldType message =
+                        match enumFieldType with
+                        | EnumTypeNode (name, EnumTypeEmpty) -> List.fold (fun s (e : EnumDescriptor) -> s || e.Name.Equals(name)) false message.Enums
+                        | EnumTypeNode (name, child) -> 
+                            let message = (List.fold (fun s (m : MessageDescriptor) -> if m.Name.Equals(name) then Some(m) else None) None message.Messages)
+                            match message with
+                            | Some(m) -> doesEnumExist child m
+                            | None -> false
+                        | _ -> false
+
+                    if (doesEnumExist enumFieldType (List.head currentMessages)) || (doesEnumExist enumFieldType proto) then
+                        match enumFieldType with
+                        | EnumTypeNode (_,_) -> Some(Enum enumFieldType)
+                        | EnumTypeEmpty -> None
+                    else
+                        let rec parseMessageFieldType messageNames =
+                            match messageNames with
+                            | [m] -> MessageTypeNode (m, MessageTypeEmpty)
+                            | m :: ms -> MessageTypeNode (m, parseMessageFieldType ms)
+                            | _ -> MessageTypeEmpty
+
+                        let messageFieldType = parseMessageFieldType (word.Split '.' |> Array.toList)
+
+                        let rec doesMessageExist messageFieldType messages =
+                            match messageFieldType with
+                            | MessageTypeNode (name, MessageTypeEmpty) -> List.fold (fun s (m : MessageDescriptor) -> s || m.Name.Equals(name)) false messages
+                            | MessageTypeNode (name, child) -> List.fold (fun s (m : MessageDescriptor) -> s || m.Name.Equals(name) && doesMessageExist child m.Messages) false messages
+                            | _ -> false
+
+                        if (doesMessageExist messageFieldType (List.head currentMessages).Messages) || (doesMessageExist messageFieldType proto.Messages) then
+                            match messageFieldType with
+                            | MessageTypeNode (_,_) -> Some(Message messageFieldType)
+                            | MessageTypeEmpty -> None
+                        else None
+
+            let parseFieldDescriptorNumber word : int option =
+                try
+                    Some(Int32.Parse(word))
+                with
+                    | :? FormatException -> None
+
+            let parseFieldDescriptorDefault fieldType (rest : String list) : obj option =
+                let stripped = (List.fold (fun x xs -> x + xs) "" rest).TrimStart('[').TrimEnd([|']'; ';'|]).Split('=') |> Array.toList |> Helpers.filterEmpty
+                match (fieldType, stripped) with
+                | (Some(fType), "default" :: value :: _) ->
+                    match fType with
+                    | Primitive primitiveFieldType ->
+                        match primitiveFieldType with
+                        | PrimitiveFieldType.TypeDouble -> let (ok, v) = System.Double.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeFloat -> let (ok, v) = System.Single.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeInt32  -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeInt64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeUInt32 -> let (ok, v) = System.UInt32.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeUInt64 -> let (ok, v) = System.UInt64.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeSInt32  -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeSInt64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeFixed32 -> let (ok, v) = System.UInt32.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeFixed64 -> let (ok, v) = System.UInt64.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeSFixed32 -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeSFixed64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeBool -> let (ok, v) = System.Boolean.TryParse(value) in if ok then Some(v |> box) else None
+                        | PrimitiveFieldType.TypeString -> Some(value.Trim('"') |> box)
+                        | PrimitiveFieldType.TypeBytes -> Some(System.Text.Encoding.UTF8.GetBytes(value) |> box)
+                        | _ -> None
+                    | Enum enumFieldType -> 
+                        let enum = getRelativeOrAbsoluteEnumDescriptor enumFieldType
+                        match enum with
+                        | Some e ->
+                            let enumVals = List.filter (fun (enumVal : EnumValueDescriptor) -> enumVal.Name.Equals(value)) e.Values
+                            if enumVals.Length > 0 then Some((List.head enumVals).Number |> box) else None
+                        | None -> None
+                    | _ -> None
+                | _ -> None
+
+            let fieldType = parseFieldDescriptorType fType
+            let fieldNumber = parseFieldDescriptorNumber (fNumber.TrimEnd ';')
+            let fieldDefault = parseFieldDescriptorDefault fieldType rest
+            match fieldType, fieldNumber with
+                | Some(fType), Some(fNumber) -> Some({Label = fLabel; Type = fType; Name = fName; Number = fNumber; Default = fieldDefault})
+                | _ -> None
+
 
 let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : ProtoZipper =
-    let words = line.Split ' ' |> Array.toList |>  filterEmpty
+    let words = line.Split ' ' |> Array.toList |>  Helpers.filterEmpty
     
     let rec addMessage name messages crumbs : MessagesZipper =
         match crumbs with
@@ -44,122 +161,6 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
     let rec addMessageField words messages crumbs : MessagesZipper =
         let parseFieldDescriptor words : FieldDescriptor option =
-            let buildFieldDescriptor fLabel fType fName (fNumber : string) rest =
-                let rec getEnumDescriptor enumFieldType message =
-                    match enumFieldType with
-                    | EnumTypeNode (name, EnumTypeEmpty) -> 
-                        let enums = List.filter (fun (e : EnumDescriptor) -> e.Name.Equals(name)) message.Enums
-                        if enums.Length > 0 then Some(enums.Head) else None
-                    | EnumTypeNode (name, child) -> 
-                        let message = (List.fold (fun s (m : MessageDescriptor) -> if m.Name.Equals(name) then Some(m) else None) None message.Messages)
-                        match message with
-                        | Some(m) -> getEnumDescriptor child m
-                        | None -> None
-                    | _ -> None
-
-                let getRelativeOrAbsoluteEnumDescriptor enumFieldType =
-                    let relativePathEnum = getEnumDescriptor enumFieldType (List.head messages)
-                    let absolutePathEnum = getEnumDescriptor enumFieldType proto
-                    match (relativePathEnum, absolutePathEnum) with
-                    | Some _, _ -> relativePathEnum
-                    | _, Some _ -> absolutePathEnum
-                    | _,_ -> None
-
-                let parseFieldDescriptorType word : FieldType option =
-                    match primitiveFieldTypes.TryFind word with
-                    | Some(fType) -> Some(Primitive fType)
-                    | None ->
-                        let rec parseEnumFieldType enumNames =
-                            match enumNames with
-                            | [e] -> EnumTypeNode (e, EnumTypeEmpty)
-                            | e :: es -> EnumTypeNode (e, parseEnumFieldType es)
-                            | _ -> EnumTypeEmpty
-
-                        let enumFieldType = parseEnumFieldType (word.Split '.' |> Array.toList)
-                        
-                            
-                        let rec doesEnumExist enumFieldType message =
-                            match enumFieldType with
-                            | EnumTypeNode (name, EnumTypeEmpty) -> List.fold (fun s (e : EnumDescriptor) -> s || e.Name.Equals(name)) false message.Enums
-                            | EnumTypeNode (name, child) -> 
-                                let message = (List.fold (fun s (m : MessageDescriptor) -> if m.Name.Equals(name) then Some(m) else None) None message.Messages)
-                                match message with
-                                | Some(m) -> doesEnumExist child m
-                                | None -> false
-                            | _ -> false
-
-                        if (doesEnumExist enumFieldType (List.head messages)) || (doesEnumExist enumFieldType proto) then
-                            match enumFieldType with
-                            | EnumTypeNode (_,_) -> Some(Enum enumFieldType)
-                            | EnumTypeEmpty -> None
-                        else
-                            let rec parseMessageFieldType messageNames =
-                                match messageNames with
-                                | [m] -> MessageTypeNode (m, MessageTypeEmpty)
-                                | m :: ms -> MessageTypeNode (m, parseMessageFieldType ms)
-                                | _ -> MessageTypeEmpty
-
-                            let messageFieldType = parseMessageFieldType (word.Split '.' |> Array.toList)
-
-                            let rec doesMessageExist messageFieldType messages =
-                                match messageFieldType with
-                                | MessageTypeNode (name, MessageTypeEmpty) -> List.fold (fun s (m : MessageDescriptor) -> s || m.Name.Equals(name)) false messages
-                                | MessageTypeNode (name, child) -> List.fold (fun s (m : MessageDescriptor) -> s || m.Name.Equals(name) && doesMessageExist child m.Messages) false messages
-                                | _ -> false
-
-                            if (doesMessageExist messageFieldType (List.head messages).Messages) || (doesMessageExist messageFieldType proto.Messages) then
-                                match messageFieldType with
-                                | MessageTypeNode (_,_) -> Some(Message messageFieldType)
-                                | MessageTypeEmpty -> None
-                            else None
-
-                let parseFieldDescriptorNumber word : int option =
-                    try
-                        Some(Int32.Parse(word))
-                    with
-                        | :? FormatException -> None
-
-                let parseFieldDescriptorDefault fieldType (rest : String list) : obj option =
-                    let stripped = (List.fold (fun x xs -> x + xs) "" rest).TrimStart('[').TrimEnd([|']'; ';'|]).Split('=') |> Array.toList |> filterEmpty
-                    match (fieldType, stripped) with
-                    | (Some(fType), "default" :: value :: _) ->
-                        match fType with
-                        | Primitive primitiveFieldType ->
-                            match primitiveFieldType with
-                            | PrimitiveFieldType.TypeDouble -> let (ok, v) = System.Double.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeFloat -> let (ok, v) = System.Single.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeInt32  -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeInt64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeUInt32 -> let (ok, v) = System.UInt32.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeUInt64 -> let (ok, v) = System.UInt64.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeSInt32  -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeSInt64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeFixed32 -> let (ok, v) = System.UInt32.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeFixed64 -> let (ok, v) = System.UInt64.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeSFixed32 -> let (ok, v) = System.Int32.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeSFixed64 -> let (ok, v) = System.Int64.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeBool -> let (ok, v) = System.Boolean.TryParse(value) in if ok then Some(v |> box) else None
-                            | PrimitiveFieldType.TypeString -> Some(value.Trim('"') |> box)
-                            | PrimitiveFieldType.TypeBytes -> Some(System.Text.Encoding.UTF8.GetBytes(value) |> box)
-                            | _ -> None
-                        //TODO: check after enum values parsing is done
-                        | Enum enumFieldType -> 
-                            let enum = getRelativeOrAbsoluteEnumDescriptor enumFieldType
-                            match enum with
-                            | Some e ->
-                                let enumVals = List.filter (fun (enumVal : EnumValueDescriptor) -> enumVal.Name.Equals(value)) e.Values
-                                if enumVals.Length > 0 then Some((List.head enumVals).Number |> box) else None
-                            | None -> None
-                        | _ -> None
-                    | _ -> None
-
-                let fieldType = parseFieldDescriptorType fType
-                let fieldNumber = parseFieldDescriptorNumber (fNumber.TrimEnd ';')
-                let fieldDefault = parseFieldDescriptorDefault fieldType rest
-                match fieldType, fieldNumber with
-                    | Some(fType), Some(fNumber) -> Some({Label = fLabel; Type = fType; Name = fName; Number = fNumber; Default = fieldDefault})
-                    | _ -> None
-
             let fLabel =
                 match List.head words with
                 | "optional" -> Some(FieldLabel.LabelOptional)
@@ -169,7 +170,7 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 
             match fLabel, List.tail words with
             | Some(fLabel), fType :: fName :: "=" :: fNumber :: rest -> 
-                buildFieldDescriptor fLabel fType fName fNumber rest
+                MessageField.parse fLabel fType fName fNumber rest messages proto
             | _ -> None
 
         match crumbs with 
