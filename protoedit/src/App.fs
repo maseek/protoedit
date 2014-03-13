@@ -22,12 +22,12 @@ type App(window : MainWindow) =
     let _dataNew : Button = _window.Root.FindName "dataNew" |> unbox
     
     let tryReadProtoFile filePath =
-        async {
+        //async {
             if File.Exists(filePath) then
                 let fileLines = readFileLines filePath
                 let protoDescriptor = parseProtoFile filePath fileLines
                 do ()
-        } |> Async.StartAsTask
+        //} |> Async.StartAsTask
 
     let previewDragHandler (e : DragEventArgs) =
         e.Effects <- DragDropEffects.Link
@@ -62,6 +62,7 @@ type App(window : MainWindow) =
         let result = saveFileDialog.ShowDialog ()
         if result.Equals(Forms.DialogResult.OK) then 
             _dataInput.Text <- saveFileDialog.FileName
+
     do
         _window.Root.Loaded.Add(fun _ ->
             _protoInput.PreviewDragOver.Add(previewDragHandler)

@@ -2,6 +2,7 @@
 
 open System
 open ProtoDescriptor
+
     module private Helpers =
         let filterEmpty (xs : String list) = List.filter (fun x -> not (x.Equals(""))) xs
 
@@ -212,4 +213,5 @@ let parseProtoLine ((proto, breadcrumbs) : (ProtoZipper)) (line : string) : Prot
 let parseProtoFile (filePath : string) (fileLines : seq<string>) =
    let proto = {Name = filePath; Messages = []; Fields = []; Enums = []} : MessageDescriptor
    let breadcrumbs = [] : ProtoCrumbs
-   Seq.fold parseProtoLine (proto, breadcrumbs) fileLines
+   let (descriptor, _) = Seq.fold parseProtoLine (proto, breadcrumbs) fileLines
+   descriptor
