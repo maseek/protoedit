@@ -7,6 +7,7 @@ open System.Windows.Media
 open System.IO
 open FSharpx
 open ParseIn
+open ProtoEditor
 
 type MainWindow = XAML<"src/MainWindow.xaml">
 
@@ -20,14 +21,15 @@ type App(window : MainWindow) =
     let _dataInput : TextBox = _window.Root.FindName "dataInput" |> unbox
     let _dataBrowse : Button = _window.Root.FindName "dataBrowse" |> unbox
     let _dataNew : Button = _window.Root.FindName "dataNew" |> unbox
+    let _view : StackPanel = _window.Root.FindName "view" |> unbox
     
     let tryReadProtoFile filePath =
-        //async {
-            if File.Exists(filePath) then
-                let fileLines = readFileLines filePath
-                let protoDescriptor = parseProtoFile filePath fileLines
-                do ()
-        //} |> Async.StartAsTask
+        if File.Exists(filePath) then
+            let fileLines = readFileLines filePath
+            let protoDescriptor = parseProtoFile filePath fileLines
+            let protoEditor = new ProtoEditor(protoDescriptor)
+            _view.Children.Clear()
+            _view.Children.Add(protoEditor.treeView) |> ignore
 
     let previewDragHandler (e : DragEventArgs) =
         e.Effects <- DragDropEffects.Link

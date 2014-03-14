@@ -63,7 +63,7 @@
     <Compile Include="src\ProtoDescriptor.fs" />
     <Compile Include="src\ParseIn.fs" />
     <Compile Include="src\ParseOut.fs" />
-    <Compile Include="src\ProtoTreeView.fs" />
+    <Compile Include="src\ProtoEditor.fs" />
     <Compile Include="src\App.fs" />
   </ItemGroup>
   <ItemGroup>
