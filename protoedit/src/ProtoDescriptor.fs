@@ -1,5 +1,7 @@
 ﻿module ProtoDescriptor
 
+open System
+
 type PrimitiveFieldType = 
     | TypeDouble = 1
     | TypeFloat = 2
@@ -47,6 +49,29 @@ let primitiveFieldTypes =
         Add("bool", PrimitiveFieldType.TypeBool).
         Add("string", PrimitiveFieldType.TypeString).
         Add("bytes", PrimitiveFieldType.TypeBytes)
+        
+let show (fieldType : FieldType) : String =
+    match fieldType with
+    | Primitive p -> Map.fold (fun state key value -> if value.Equals(p) then key else state) "" primitiveFieldTypes
+    | Enum e -> 
+        match e with
+        | EnumTypeNode (name, next) -> 
+            let rec addNext next =
+                match next with
+                | EnumTypeNode (name, next) -> "." + name + addNext next
+                | _ -> ""
+            name + addNext next
+        | _ -> ""
+    | Message m -> 
+        match m with
+        | MessageTypeNode (name, next) -> 
+            let rec addNext next =
+                match next with
+                | MessageTypeNode (name, next) -> "." + name + addNext next
+                | _ -> ""
+            name + addNext next
+        | _ -> ""
+    | _ -> ""
 
 type FieldLabel =
     | LabelOptional = 1

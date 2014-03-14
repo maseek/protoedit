@@ -11,7 +11,7 @@ type ProtoEditor(protoDescriptor : MessageDescriptor) =
 
     let addFields (fields : FieldDescriptor list) (items : ItemCollection) =
         let addFieldBranch (field : FieldDescriptor) =
-            let branch = new TreeViewItem(Header=field.Name + " : " + field.Type.ToString())
+            let branch = new TreeViewItem(Header=field.Name + " : " + show field.Type)
             items.Add branch
         List.map addFieldBranch fields |> ignore
 
