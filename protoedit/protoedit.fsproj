@@ -60,6 +60,7 @@
     <None Include="src\packages.config">
       <Link>src\packages.config</Link>
     </None>
+    <Compile Include="src\Helpers.fs" />
     <Compile Include="src\ProtoDescriptor.fs" />
     <Compile Include="src\ParseIn.fs" />
     <Compile Include="src\ParseOut.fs" />

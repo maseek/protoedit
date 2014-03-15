@@ -27,9 +27,9 @@ type App(window : MainWindow) =
         if File.Exists(filePath) then
             let fileLines = readFileLines filePath
             let protoDescriptor = parseProtoFile filePath fileLines
-            let protoEditor = new ProtoEditor(protoDescriptor)
-            _view.Children.Clear()
-            _view.Children.Add(protoEditor.treeView) |> ignore
+            if protoDescriptor.Messages.Length > 0 then
+                let protoEditor = new ProtoEditor(protoDescriptor, _view)
+                do ()
 
     let previewDragHandler (e : DragEventArgs) =
         e.Effects <- DragDropEffects.Link

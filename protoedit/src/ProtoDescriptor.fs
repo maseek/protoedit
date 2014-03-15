@@ -78,12 +78,20 @@ type FieldLabel =
     | LabelRequired = 2
     | LabelRepeated = 3
 
+[<CustomEquality; CustomComparison>]
 type FieldDescriptor =
     {Name : string;
     Number : int;
     Type : FieldType;
     Label : FieldLabel;
     Default : obj option}
+
+    static member id f = f.Number
+
+    override x.Equals y = Helpers.equalsOn FieldDescriptor.id x y
+    override x.GetHashCode() = hash x.Number
+    interface System.IComparable with
+        member x.CompareTo y = Helpers.compareOn FieldDescriptor.id x y
 
 type EnumValueDescriptor =
     {Name : string;
