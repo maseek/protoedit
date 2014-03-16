@@ -46,8 +46,8 @@
 
         <TextBlock Text="serialized data" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" Margin="5" />
         <TextBox Name="dataInput" Style="{StaticResource placeHolder}" Tag="drag&amp;drop" Grid.Row="1" Grid.Column="1" Margin="5" />
-        <Button Name="dataBrowse" Content="browse..." Grid.Column="2" Grid.Row="1" Margin="5" />
-        <Button Name="dataNew" Content="new..." Grid.Column="3" Grid.Row="1" Margin="5" />
+        <Button Name="dataBrowse" Content="browse..." IsEnabled="False" Grid.Column="2" Grid.Row="1" Margin="5" />
+        <Button Name="dataNew" Content="new..." IsEnabled="False" Grid.Column="3" Grid.Row="1" Margin="5" />
         <StackPanel Name="view" Orientation="Horizontal" Grid.Column="0" Grid.ColumnSpan="4" Grid.Row="3"></StackPanel>
     </Grid>
 </Window>

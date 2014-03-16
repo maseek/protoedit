@@ -61,9 +61,11 @@
       <Link>src\packages.config</Link>
     </None>
     <Compile Include="src\Helpers.fs" />
+    <Compile Include="src\DataDescriptor.fs" />
     <Compile Include="src\ProtoDescriptor.fs" />
-    <Compile Include="src\ParseIn.fs" />
     <Compile Include="src\ParseOut.fs" />
+    <Compile Include="src\ParseInData.fs" />
+    <Compile Include="src\ParseInProto.fs" />
     <Compile Include="src\ProtoEditor.fs" />
     <Compile Include="src\App.fs" />
   </ItemGroup>

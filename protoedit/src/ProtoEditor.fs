@@ -14,9 +14,10 @@ type ProtoEditor(protoDescriptor : MessageDescriptor, view : Panel) =
 
     //TODO
     let editField field =
+        _fieldDataGrid.Columns.Clear()
         let h1 = new DataGridTextColumn()
         _fieldDataGrid.Columns.Add(h1)
-        _fieldDataGrid.Visibility = Visibility.Visible |> ignore
+        _fieldDataGrid.Visibility <- Visibility.Visible
 
     let addFields (fields : FieldDescriptor list) (items : ItemCollection) =
         let addFieldBranch (field : FieldDescriptor) =
@@ -37,7 +38,7 @@ type ProtoEditor(protoDescriptor : MessageDescriptor, view : Panel) =
     do
         _protoTreeView.Name = "protoTreeView" |> ignore
         addMessages _protoDescriptor.Messages _protoTreeView.Items
-        _fieldDataGrid.Visibility = Visibility.Hidden |> ignore
+        _fieldDataGrid.Visibility <- Visibility.Collapsed
         _view.Children.Clear()
         _view.Children.Add(_protoTreeView) |> ignore
         _view.Children.Add(_fieldDataGrid) |> ignore

@@ -6,7 +6,7 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.IO
 open FSharpx
-open ParseIn
+open ParseInProto
 open ProtoEditor
 
 type MainWindow = XAML<"src/MainWindow.xaml">
@@ -28,6 +28,8 @@ type App(window : MainWindow) =
             let fileLines = readFileLines filePath
             let protoDescriptor = parseProtoFile filePath fileLines
             if protoDescriptor.Messages.Length > 0 then
+                _dataBrowse.IsEnabled <- true
+                _dataNew.IsEnabled <- true
                 let protoEditor = new ProtoEditor(protoDescriptor, _view)
                 do ()
 

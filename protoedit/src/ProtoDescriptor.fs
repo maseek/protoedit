@@ -71,7 +71,6 @@ let show (fieldType : FieldType) : String =
                 | _ -> ""
             name + addNext next
         | _ -> ""
-    | _ -> ""
 
 type FieldLabel =
     | LabelOptional = 1
